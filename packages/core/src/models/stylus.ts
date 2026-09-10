@@ -11,6 +11,10 @@ export class StylusModel extends BaseModel<SVGPathElement> {
     this.points = [point]
 
     this.attr('fill', this.brush.color)
+
+    if (this.brush.opacity != null && this.brush.opacity !== 1)
+      this.attr('opacity', this.brush.opacity.toString())
+
     this.attr('d', this.getSvgData(this.points))
 
     return this.el

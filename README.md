@@ -11,6 +11,7 @@ SVG-based drawing tool in browser. Built for [Slidev](https://github.com/slidevj
 - Vanilla JavaScript - integrate into any framework you like
 - SVG-based - scalable, transparent, and serializable
 - Stylus / Touch pressure support
+- Translucent highlighter, with a per-brush `opacity` honored by every tool
 - Headless (unstyled) - style it as you want
 - Undo / Redo stacks
 
@@ -30,7 +31,7 @@ import { createDrauu } from 'drauu'
 const drauu = createDrauu({
   el: '#svg',
   brush: {
-    mode: 'stylus', // 'line', 'rectangle', 'ellipse'
+    mode: 'stylus', // 'draw', 'line', 'rectangle', 'ellipse', 'highlighter', 'eraseLine'
     color: 'skyblue',
     size: 5,
   }

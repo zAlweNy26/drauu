@@ -1,6 +1,6 @@
 import type { StrokeOptions } from 'perfect-freehand'
 
-export type DrawingMode = 'draw' | 'stylus' | 'line' | 'rectangle' | 'ellipse' | 'eraseLine'
+export type DrawingMode = 'draw' | 'stylus' | 'line' | 'rectangle' | 'ellipse' | 'eraseLine' | 'highlighter'
 
 export interface Brush {
   /**
@@ -17,6 +17,13 @@ export interface Brush {
    * Stroke width
    */
   size: number
+
+  /**
+   * Opacity of the stroke, from 0 to 1.
+   *
+   * @default 1 (0.4 in `highlighter` mode)
+   */
+  opacity?: number
 
   /**
    * Color filled, only works in `rectangle` and `ellipse` mode.

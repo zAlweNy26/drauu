@@ -55,7 +55,7 @@ export abstract class BaseModel<T extends SVGElement> {
       return {
         x: (event.pageX / cssZoom - rect.left + offset.x) * scale,
         y: (event.pageY / cssZoom - rect.top + offset.y) * scale,
-        pressure: event.pressure,
+        pressure: event.pointerType === 'pen' ? event.pressure : 0.5,
       }
     }
     else {
@@ -66,7 +66,7 @@ export abstract class BaseModel<T extends SVGElement> {
       return {
         x: loc.x * scale,
         y: loc.y * scale,
-        pressure: event.pressure,
+        pressure: event.pointerType === 'pen' ? event.pressure : 0.5,
       }
     }
   }
@@ -84,6 +84,9 @@ export abstract class BaseModel<T extends SVGElement> {
     el.setAttribute('stroke', brush.color)
     el.setAttribute('stroke-width', brush.size.toString())
     el.setAttribute('stroke-linecap', 'round')
+
+    if (brush.opacity != null && brush.opacity !== 1)
+      el.setAttribute('opacity', brush.opacity.toString())
 
     if (brush.dasharray)
       el.setAttribute('stroke-dasharray', brush.dasharray)
