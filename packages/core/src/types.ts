@@ -1,6 +1,6 @@
 import type { StrokeOptions } from 'perfect-freehand'
 
-export type DrawingMode = 'draw' | 'stylus' | 'line' | 'rectangle' | 'ellipse' | 'eraseLine' | 'highlighter'
+export type DrawingMode = 'draw' | 'stylus' | 'line' | 'rectangle' | 'ellipse' | 'eraseLine' | 'highlighter' | 'bucket'
 
 /**
  * What the eraser takes away.
@@ -17,7 +17,7 @@ export interface Brush {
   mode?: DrawingMode
 
   /**
-   * Stroke color
+   * Stroke color, and the color the `bucket` fills with
    */
   color: string
 

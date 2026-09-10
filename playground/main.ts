@@ -22,6 +22,7 @@ const modeShortcuts: Record<string, string> = {
   KeyL: 'm-line',
   KeyR: 'm-rect',
   KeyE: 'm-ellipse',
+  KeyB: 'm-bucket',
   KeyX: 'm-eraser',
 }
 
@@ -119,6 +120,7 @@ const tools: Tool[] = [
   tool('m-arrow', 'line', PEN, true),
   tool('m-rect', 'rectangle'),
   tool('m-ellipse', 'ellipse'),
+  tool('m-bucket', 'bucket'),
 ]
 
 // `m-stylus` is the one carrying the `active` class in index.html.

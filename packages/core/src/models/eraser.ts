@@ -1,6 +1,6 @@
 import type { EraseMode, Operation, Point } from '../types'
 import { D } from '../utils'
-import { ERASER_MASK_URL, getEraserMask, pruneEraserMask } from '../utils/dom'
+import { collectInk, ERASER_MASK_URL, getEraserMask, pruneEraserMask } from '../utils/dom'
 import { segmentDistanceSquared } from '../utils/geometry'
 import { BaseModel } from './base'
 
@@ -34,22 +34,6 @@ interface EraserTarget {
   dead?: boolean
 }
 
-const NON_INK = new Set([
-  'defs',
-  'mask',
-  'marker',
-  'clippath',
-  'pattern',
-  'symbol',
-  'filter',
-  'lineargradient',
-  'radialgradient',
-  'title',
-  'desc',
-  'style',
-  'metadata',
-])
-
 const SAMPLE_SPACING = 12
 
 const MAX_SUBDIVISIONS = 100
@@ -82,30 +66,7 @@ export class EraserModel extends BaseModel<SVGRectElement> {
     if (!el)
       return
 
-    const owners = new Map<SVGElement, SVGGeometryElement[]>()
-
-    const walk = (parent: Element, owner?: SVGElement) => {
-      for (const child of Array.from(parent.children) as SVGElement[]) {
-        if (NON_INK.has(child.tagName.toLowerCase()))
-          continue
-
-        if (typeof (child as SVGGeometryElement).getTotalLength === 'function') {
-          const key = owner ?? child
-          const geometries = owners.get(key)
-          if (geometries)
-            geometries.push(child as SVGGeometryElement)
-          else
-            owners.set(key, [child as SVGGeometryElement])
-        }
-        else if (child.children.length) {
-          walk(child, owner ?? child)
-        }
-      }
-    }
-
-    walk(el)
-
-    for (const [owner, geometries] of owners)
+    for (const [owner, geometries] of collectInk(el))
       this.addTarget(owner, geometries)
   }
 

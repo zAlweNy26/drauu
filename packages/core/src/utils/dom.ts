@@ -73,3 +73,73 @@ export function pruneEraserMask(svg: SVGSVGElement | null) {
   else
     mask.remove()
 }
+
+const NON_INK = new Set([
+  'defs',
+  'mask',
+  'marker',
+  'clippath',
+  'pattern',
+  'symbol',
+  'filter',
+  'lineargradient',
+  'radialgradient',
+  'title',
+  'desc',
+  'style',
+  'metadata',
+])
+
+/**
+ * Every drawn element on the canvas mapped to the geometry it is made of, in
+ * painting order. Geometry nested in a group is reported under that group, so
+ * that a tool acting on whole drawings (the eraser) and one acting on a single
+ * shape (the bucket) can both start from the same walk.
+ */
+export function collectInk(svg: SVGSVGElement): Map<SVGElement, SVGGeometryElement[]> {
+  const owners = new Map<SVGElement, SVGGeometryElement[]>()
+
+  const walk = (parent: Element, owner?: SVGElement) => {
+    for (const child of Array.from(parent.children) as SVGElement[]) {
+      if (NON_INK.has(child.tagName.toLowerCase()))
+        continue
+
+      if (typeof (child as SVGGeometryElement).getTotalLength === 'function') {
+        const key = owner ?? child
+        const geometries = owners.get(key)
+        if (geometries)
+          geometries.push(child as SVGGeometryElement)
+        else
+          owners.set(key, [child as SVGGeometryElement])
+      }
+      else if (child.children.length) {
+        walk(child, owner ?? child)
+      }
+    }
+  }
+
+  walk(svg)
+
+  return owners
+}
+
+/**
+ * Marks a shape the bucket has traced, as opposed to one the user drew.
+ */
+export const FILL_MARKER = 'data-drauu-fill'
+
+/**
+ * Slot a traced fill in under every stroke, and over the fills already there,
+ * so that paint never hides the outlines that shaped it.
+ */
+export function insertFill(svg: SVGSVGElement, node: SVGElement) {
+  for (const child of Array.from(svg.children) as SVGElement[]) {
+    if (NON_INK.has(child.tagName.toLowerCase()) || child.hasAttribute(FILL_MARKER))
+      continue
+
+    child.before(node)
+    return
+  }
+
+  svg.append(node)
+}
