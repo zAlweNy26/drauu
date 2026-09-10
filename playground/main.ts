@@ -1,4 +1,4 @@
-import type { Brush, DrawingMode } from 'drauu'
+import type { Brush, DrawingMode, EraseMode } from 'drauu'
 import { createDrauu } from 'drauu'
 import 'virtual:windi.css'
 import './style.css'
@@ -22,6 +22,7 @@ const modeShortcuts: Record<string, string> = {
   KeyL: 'm-line',
   KeyR: 'm-rect',
   KeyE: 'm-ellipse',
+  KeyX: 'm-eraser',
 }
 
 window.addEventListener('keydown', (e) => {
@@ -30,6 +31,11 @@ window.addEventListener('keydown', (e) => {
       drauu.redo()
     else
       drauu.undo()
+    return
+  }
+
+  if (e.code === 'KeyX' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    document.getElementById('m-eraser-partial')!.click()
     return
   }
 
@@ -91,19 +97,22 @@ interface Tool {
   el: HTMLElement
   mode: DrawingMode
   arrowEnd: boolean
+  eraseMode: EraseMode
   state: ToolState
 }
 
 const PEN: ToolState = { color: '#000000', size: 3, opacity: 1 }
 const HIGHLIGHTER: ToolState = { color: '#ede215', size: 20, opacity: 0.4 }
+const ERASER: ToolState = { color: '#000000', size: 24, opacity: 1 }
 
-function tool(id: string, mode: DrawingMode, state: ToolState = PEN, arrowEnd = false): Tool {
-  return { el: document.getElementById(id)!, mode, arrowEnd, state: { ...state } }
+function tool(id: string, mode: DrawingMode, state: ToolState = PEN, arrowEnd = false, eraseMode: EraseMode = 'element'): Tool {
+  return { el: document.getElementById(id)!, mode, arrowEnd, eraseMode, state: { ...state } }
 }
 
 const tools: Tool[] = [
   tool('m-stylus', 'stylus'),
   tool('m-eraser', 'eraseLine'),
+  tool('m-eraser-partial', 'eraseLine', ERASER, false, 'partial'),
   tool('m-draw', 'draw'),
   tool('m-highlighter', 'highlighter', HIGHLIGHTER),
   tool('m-line', 'line'),
@@ -128,6 +137,7 @@ function activate(next: Tool) {
   next.el.classList.add('active')
 
   drauu.brush.arrowEnd = next.arrowEnd
+  drauu.brush.eraseMode = next.eraseMode
   Object.assign(drauu.brush, next.state)
   // `mode` is assigned last, and through the setter, so `onUnselected` still
   // reaches the model we are leaving rather than the one we are entering.

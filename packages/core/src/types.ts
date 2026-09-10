@@ -2,6 +2,14 @@ import type { StrokeOptions } from 'perfect-freehand'
 
 export type DrawingMode = 'draw' | 'stylus' | 'line' | 'rectangle' | 'ellipse' | 'eraseLine' | 'highlighter'
 
+/**
+ * What the eraser takes away.
+ *
+ * - `element` — every stroke the eraser crosses, whole
+ * - `partial` — only the ink the eraser actually passes over
+ */
+export type EraseMode = 'element' | 'partial'
+
 export interface Brush {
   /**
    * @default 'brush'
@@ -24,6 +32,16 @@ export interface Brush {
    * @default 1 (0.4 in `highlighter` mode)
    */
   opacity?: number
+
+  /**
+   * What the eraser takes away, only works in `eraseLine` mode.
+   *
+   * `partial` erases with a tip `size` wide, and masks rather than cuts, so the
+   * erased ink stays in the document invisibly.
+   *
+   * @default 'element'
+   */
+  eraseMode?: EraseMode
 
   /**
    * Color filled, only works in `rectangle` and `ellipse` mode.
