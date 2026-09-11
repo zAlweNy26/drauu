@@ -23,6 +23,20 @@ SVG-based drawing tool in browser. Built for [Slidev](https://github.com/slidevj
 npm i drauu
 ```
 
+### Preview releases
+
+Every commit and pull request on this fork is published to [pkg.pr.new](https://pkg.pr.new),
+so you can install any build without waiting for an npm release:
+
+```bash
+bun add https://pkg.pr.new/zAlweNy26/drauu@main              # latest commit on a branch
+bun add https://pkg.pr.new/zAlweNy26/drauu@3bcdc7c           # a specific commit
+bun add https://pkg.pr.new/zAlweNy26/drauu/@drauu/core@main  # the core package
+```
+
+`drauu` collapses to `owner/repo@ref` because the package name matches the repo
+name; other packages use the full `owner/repo/package@ref` form.
+
 ```html
 <svg id="svg"></svg>
 ```
