@@ -5,13 +5,24 @@ import { simplify } from '../utils/simplify'
 import { BaseModel } from './base'
 
 export class DrawModel extends BaseModel<SVGPathElement> {
+  /**
+   * Every point of the stroke in progress, in the order it was drawn.
+   *
+   * Only ever appended to until the stroke ends, so a consumer can read it
+   * incrementally. The path is simplified when the stroke is committed.
+   */
   public points: Point[] = []
-  private count = 0
   private arrowId: string | undefined
+  /** `d` for the leading segments, which can no longer change. */
+  private settledPath = ''
+  /** Index of the last segment in `settledPath`; -1 before the first point. */
+  private settledTo = -1
 
   override onStart(point: Point) {
     this.el = this.createElement('path', { fill: 'transparent' })
     this.points = [point]
+    this.settledPath = ''
+    this.settledTo = -1
 
     if (this.brush.arrowEnd) {
       this.arrowId = guid()
@@ -26,20 +37,37 @@ export class DrawModel extends BaseModel<SVGPathElement> {
     if (!this.el)
       this.onStart(point)
 
-    if (this.points[this.points.length - 1] !== point) {
+    if (this.points[this.points.length - 1] !== point)
       this.points.push(point)
-      this.count += 1
-    }
 
-    // when using pressure, we need to divide the path intro multiple segments
-    // to have different size and weight in each part
-    if (this.count > 5) {
-      this.points = simplify(this.points, 1, true)
-      this.count = 0
-    }
-
-    this.attr('d', DrawModel.toSvgData(this.points))
+    this.attr('d', this.pathData())
     return true
+  }
+
+  /**
+   * `DrawModel.toSvgData(this.points)`, without rebuilding it on every move.
+   *
+   * Segment i reads points i - 2 to i + 1, so it is final as soon as point
+   * i + 1 exists. Those are appended to `settledPath` once; only the last
+   * segment is recomputed, keeping each move O(1) in segment math however
+   * long the stroke gets.
+   */
+  private pathData() {
+    const points = this.points
+    if (this.settledTo < 0) {
+      this.settledPath = DrawModel.moveCommand(points[0])
+      this.settledTo = 0
+    }
+
+    for (let i = this.settledTo + 1; i <= points.length - 2; i++) {
+      this.settledPath += ` ${DrawModel.bezierCommand(points[i], i, points)}`
+      this.settledTo = i
+    }
+
+    const last = points.length - 1
+    return last > this.settledTo
+      ? `${this.settledPath} ${DrawModel.bezierCommand(points[last], last, points)}`
+      : this.settledPath
   }
 
   override onEnd() {
@@ -100,11 +128,15 @@ export class DrawModel extends BaseModel<SVGPathElement> {
     return `C ${cps.x.toFixed(D)},${cps.y.toFixed(D)} ${cpe.x.toFixed(D)},${cpe.y.toFixed(D)} ${point.x.toFixed(D)},${point.y.toFixed(D)}`
   }
 
+  static moveCommand(point: Point) {
+    return `M ${point.x.toFixed(D)},${point.y.toFixed(D)}`
+  }
+
   static toSvgData(points: Point[]) {
     return points.reduce(
       (acc, point, i, a) =>
         i === 0
-          ? `M ${point.x.toFixed(D)},${point.y.toFixed(D)}`
+          ? DrawModel.moveCommand(point)
           : `${acc} ${DrawModel.bezierCommand(point, i, a)}`,
       '',
     )
