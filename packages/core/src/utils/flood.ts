@@ -16,6 +16,8 @@ export interface FloodRegion {
   maxY: number
   /** User units covered by one raster pixel, the accuracy of the trace. */
   unit: number
+  /** Whether the space runs up to the viewBox edge rather than being fenced by ink alone. */
+  edge: boolean
 }
 
 export interface FloodResult {
@@ -58,6 +60,12 @@ const TUCK = 1.5
 /** Trace accuracy, in pixels. Enough to take the staircase off a diagonal. */
 const TRACE_TOLERANCE = 1.4
 
+/** The svg's viewBox, when it has a usable one. */
+function viewBoxOf(svg: SVGSVGElement): DOMRect | undefined {
+  const box = svg.viewBox?.baseVal
+  return box && box.width > 0 && box.height > 0 ? box : undefined
+}
+
 /**
  * Find the space that surrounds `point`, the way a paint bucket does: whatever
  * ink is in the way stops it, however many strokes that ink came from.
@@ -79,20 +87,31 @@ export function floodRegion(svg: SVGSVGElement, point: Point): FloodResult {
     return miss
   }
 
-  // The raster spans the ink and the point, so that a point outside the drawing
-  // leaks out immediately rather than paying for a raster of its own.
-  const spanX = Math.max(box.x + box.width, point.x) - Math.min(box.x, point.x)
-  const spanY = Math.max(box.y + box.height, point.y) - Math.min(box.y, point.y)
+  // A viewBox is the edge of the page, and the page edge fences paint in the
+  // way ink does: the background, and any space the ink leaves open against
+  // the edge, fill up to it.
+  const frame = viewBoxOf(svg)
+  if (frame && (point.x < frame.x || point.y < frame.y
+    || point.x > frame.x + frame.width || point.y > frame.y + frame.height)) {
+    return miss
+  }
+
+  // Without one, the raster spans the ink and the point, so that a point
+  // outside the drawing leaks out immediately rather than paying for a raster
+  // of its own.
+  const spanX = frame ? frame.width : Math.max(box.x + box.width, point.x) - Math.min(box.x, point.x)
+  const spanY = frame ? frame.height : Math.max(box.y + box.height, point.y) - Math.min(box.y, point.y)
   const scale = Math.min(SCALE, Math.sqrt(MAX_PIXELS / Math.max(1, spanX * spanY)))
   const unit = 1 / scale
   const bridge = Math.max(1, Math.round(BRIDGE * scale))
   const tuck = Math.max(1, Math.round(TUCK * scale))
 
   // Blank margin around the ink, wide enough that bridging cannot reach the
-  // edge and wall an unenclosed space in by accident.
-  const margin = bridge + 2
-  const originX = Math.min(box.x, point.x) - margin * unit
-  const originY = Math.min(box.y, point.y) - margin * unit
+  // edge and wall an unenclosed space in by accident. Inside a frame it is the
+  // one-pixel wall along the page edge instead.
+  const margin = frame ? 1 : bridge + 2
+  const originX = (frame ? frame.x : Math.min(box.x, point.x)) - margin * unit
+  const originY = (frame ? frame.y : Math.min(box.y, point.y)) - margin * unit
   const width = Math.max(1, Math.ceil(spanX * scale) + margin * 2)
   const height = Math.max(1, Math.ceil(spanY * scale) + margin * 2)
 
@@ -156,6 +175,17 @@ export function floodRegion(svg: SVGSVGElement, point: Point): FloodResult {
   for (const i of thin)
     walls[i] = 1
 
+  if (frame) {
+    for (let x = 0; x < width; x++) {
+      walls[x] = 1
+      walls[(height - 1) * width + x] = 1
+    }
+    for (let y = 0; y < height; y++) {
+      walls[y * width] = 1
+      walls[y * width + width - 1] = 1
+    }
+  }
+
   const startX = Math.floor((point.x - originX) * scale)
   const startY = Math.floor((point.y - originY) * scale)
   if (startX < 0 || startY < 0 || startX >= width || startY >= height)
@@ -184,6 +214,8 @@ export function floodRegion(svg: SVGSVGElement, point: Point): FloodResult {
   if (!space)
     return miss
 
+  const edge = !!frame && touchesBorder(space, width, height)
+
   dilate(space, width, height, tuck, walls)
 
   const loops = trace(space, width, height)
@@ -207,7 +239,20 @@ export function floodRegion(svg: SVGSVGElement, point: Point): FloodResult {
     return `M ${points.join(' L ')} Z`
   }).join(' ')
 
-  return { onInk: false, region: { d, loops: loops.length, minX, minY, maxX, maxY, unit } }
+  return { onInk: false, region: { d, loops: loops.length, minX, minY, maxX, maxY, unit, edge } }
+}
+
+/** Whether the space reaches the pixels just inside the raster's one-pixel border. */
+function touchesBorder(space: Uint8Array, width: number, height: number) {
+  for (let x = 1; x < width - 1; x++) {
+    if (space[width + x] || space[(height - 2) * width + x])
+      return true
+  }
+  for (let y = 1; y < height - 1; y++) {
+    if (space[y * width + 1] || space[y * width + width - 2])
+      return true
+  }
+  return false
 }
 
 /**

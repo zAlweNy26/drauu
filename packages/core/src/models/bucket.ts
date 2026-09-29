@@ -63,8 +63,9 @@ export class BucketModel extends BaseModel<SVGGeometryElement> {
 
     // A space that turns out to be exactly the inside of one hollow shape is
     // painted through that shape instead of over it: crisper at any zoom, and
-    // it stays with the shape when the shape is erased.
-    const shape = region.loops === 1 ? this.shapeAround(point, region) : undefined
+    // it stays with the shape when the shape is erased. A space that runs up to
+    // the page edge is not a shape's inside, even when its outline is close.
+    const shape = region.loops === 1 && !region.edge ? this.shapeAround(point, region) : undefined
 
     return shape
       ? this.paintShape(shape)
